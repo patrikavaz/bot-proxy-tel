@@ -2,8 +2,8 @@ name: Proxy Broadcast
 
 on:
   schedule:
-    - cron: "0 0,12 * * *"   # Every 12 hours: 00:00 and 12:00 UTC
-  workflow_dispatch:           # Manual trigger
+    - cron: "0 0,12 * * *"
+  workflow_dispatch:
 
 jobs:
   broadcast:
@@ -21,20 +21,23 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      # Download users.json from the previous run (so we don't lose subscribers)
-      - name: Download users artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: users-db
-          path: .
-        continue-on-error: true   # First run won't have this yet — that's OK
+      - name: Download users artifact (if exists)
+        id: download
+        run: |
+          gh run list --workflow=broadcast.yml --status=success --limit=1 --json databaseId -q '.[0].databaseId' > last_run_id.txt 2>/dev/null || true
+          RUN_ID=$(cat last_run_id.txt 2>/dev/null || echo "")
+          if [ -n "$RUN_ID" ] && [ "$RUN_ID" != "null" ]; then
+            gh run download "$RUN_ID" --name users-db --dir . 2>/dev/null || true
+          fi
+          echo "Done (users.json exists: $(test -f users.json && echo yes || echo no))"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Send proxy update to all users
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
         run: python bot.py broadcast
 
-      # Save updated users.json so next run has it
       - name: Upload users artifact
         uses: actions/upload-artifact@v4
         with:
