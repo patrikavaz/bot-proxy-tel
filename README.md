@@ -14,3 +14,5 @@ https://github.com/SoliSpirit/mtproto/
 | `/stop` | لغو اشتراک |
 ---
 
+ID Bot:@AvazProxy_bot
+ID TELEGRAM ME: @isRoot_u
